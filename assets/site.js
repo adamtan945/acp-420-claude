@@ -111,6 +111,25 @@
     paint();
   });
 
+  /* ---------- 動手做 Lab：步驟打勾 ---------- */
+  $$('[data-lab]').forEach((box) => {
+    const sec = box.dataset.lab, ins = $$('input[type=checkbox]', box);
+    const bar = $('.lab-prog i', box), txt = $('.lab-prog .txt', box);
+    const paint = () => {
+      const n = ins.filter((i) => i.checked).length;
+      ins.forEach((i) => i.closest('li').classList.toggle('done', i.checked));
+      bar.style.width = (n / ins.length) * 100 + '%';
+      txt.textContent = n === ins.length ? `全部完成（${n}/${ins.length}）` : `已完成 ${n}/${ins.length} 步`;
+    };
+    const d0 = db.load(); const got = (d0.lab && d0.lab[sec]) || [];
+    ins.forEach((i) => { i.checked = got.includes(+i.dataset.k); i.addEventListener('change', () => {
+      const d = db.load(); d.lab = d.lab || {};
+      d.lab[sec] = ins.filter((x) => x.checked).map((x) => +x.dataset.k);
+      if (!d.lab[sec].length) delete d.lab[sec];
+      db.save(d); paint(); }); });
+    paint();
+  });
+
   /* ---------- 通用篩選（圖鑑） ---------- */
   $$('[data-filter]').forEach((wrap) => {
     const items = $$(wrap.dataset.filter);

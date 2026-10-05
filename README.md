@@ -1,0 +1,21 @@
+# ACP-420 繁體中文教材
+
+Atlassian **ACP-420 Managing Jira Service Projects for Cloud** 認證的完整中文教材：24 節逐節講解 + 150 題題庫（單選、多選、圖例題）+ 75 題計時模擬考。
+
+線上閱讀：<https://adamtan945.github.io/acp-420-claude/>
+
+## 內容
+
+- **24 節**對應官方 Exam Topics（V2・April 2025）：每節都是「3 分鐘速覽 → 圖解 → 分段講解（自我檢查、本段必考）→ 易錯觀念 → 一分鐘腦內整理 → 本節練習」。
+- **150 題題庫**：英文題幹（貼近實考）＋中文翻譯，每個選項都有解析與官方來源；可錯題重練、全真 75 題模擬考（180 分鐘、答對 50 題及格）。紀錄存在瀏覽器，可匯出匯入。
+- **考前速讀**、**易錯與易混**、**圖鑑**：由各節內容自動彙整。
+- 手機、平板、桌機都能閱讀；淺色與深色模式。
+
+## 關於內容正確性
+
+- 考試沿用 project／issue 等用語，現行 Jira Service Management 已改稱 space／work item；customer 端仍叫 request。
+- 每一節都依考綱指定或對應的 Atlassian 官方文件撰寫，頁尾列出來源；官方文件改版與考綱不同之處兩版並陳。
+
+## 授權與免責
+
+教材為原創整理，非 Atlassian 官方出版品。所有題目為原創，不含任何第三方題庫的題幹或選項。Atlassian、Jira 為 Atlassian Pty Ltd 的商標。

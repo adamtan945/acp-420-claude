@@ -94,6 +94,7 @@
         const ok = grade(q, pick);
         foot += pick || mode !== 'r' ? `<div class="q-verdict ${ok ? 'ok' : 'no'}">${ok ? IC.ok + '答對' : IC.no + (pick ? '答錯' : '未作答') + '，正解是 ' + q.ans.split('').join('、')}</div>` : `<div class="q-verdict no">${IC.no}未作答，正解是 ${q.ans.split('').join('、')}</div>`;
         if (q.note) foot += `<div class="q-note">${q.note}</div>`;
+        if (q.inf) foot += `<div class="q-note warn"><b>推論：</b>官方文件未明載，答案依現有說明推論；不會出現在全真模擬考。</div>`;
         if (q.src && q.src.length) foot += `<div class="q-src">官方來源：${q.src.map((u) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u.replace(/^https?:\/\/(support\.|www\.)?atlassian\.com\//, '').replace(/\/$/, ''))}</a>`).join('、')}</div>`;
       }
       if (hist.length) foot += `<div class="q-hist" title="最近的作答紀錄">作答紀錄 ${hist.map((h) => `<i class="${h[2] ? 'o' : 'x'}" title="${h[0] ? fmtT(h[0]) : '舊版紀錄'}：${h[2] ? '對' : '錯'}${h[1] ? '（選 ' + h[1] + '）' : ''}"></i>`).join('')}<span>共 ${(d.att[q.id] || []).length} 次・答對 ${(d.att[q.id] || []).filter((h) => h[2]).length} 次</span></div>`;
@@ -255,7 +256,8 @@
 
   function pickExam(n, src) {
     const out = [];
-    const base = src === 'all' ? Q : Q.filter((q) => q.ex);
+    // 推論題（inf）不進正式計分的模擬考
+    const base = (src === 'all' ? Q : Q.filter((q) => q.ex)).filter((q) => !q.inf);
     const doms = Object.keys(WEIGHT);
     const target = doms.map((d) => [d, Math.round(n * WEIGHT[d] / 100)]);
     target[1][1] += n - target.reduce((a, [, k]) => a + k, 0);

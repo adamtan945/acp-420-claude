@@ -579,3 +579,5 @@ body.ex-run .hero{display:none}body.ex-run #exam-app{margin-top:0!important}
 .sl li.nosrc b{display:flex;align-items:center;gap:.35rem;color:var(--amber)}
 .sl li.nosrc b svg{width:1rem;height:1rem;flex:0 0 auto}
 .sl li.nosrc span{display:block;margin-top:.2rem;color:var(--ink-2)}
+/* 長網址、路徑不撐破版面 */
+.ak summary .qq,.lab-steps .la,.lab-steps .le span,.sl q{min-width:0;overflow-wrap:anywhere}

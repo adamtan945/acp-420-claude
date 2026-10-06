@@ -27,9 +27,9 @@
   (function migrate() {
     const d = D(); if (d.mig) return;
     try {
-      const old = JSON.parse(localStorage.getItem(KEY + '-legacy-p') || '{}');
+      const old = JSON.parse(localStorage.getItem(CFG.legacy_p || (KEY + '-legacy-p')) || '{}');
       Object.entries(old).forEach(([id, ok]) => { if (BY.has(id) && !d.att[id]) d.att[id] = [[0, '', !!ok, 'p']]; });
-      const hist = JSON.parse(localStorage.getItem(KEY + '-legacy-e') || '[]');
+      const hist = JSON.parse(localStorage.getItem(CFG.legacy_e || (KEY + '-legacy-e')) || '[]');
       hist.forEach((h) => d.exams.push({ id: 'old' + h.at, legacy: 1, mode: 'full', dom: h.domain, t0: h.at, t1: h.at, score: h.right, total: h.total }));
     } catch (e) {}
     d.mig = 1; save(d);
@@ -179,35 +179,41 @@
     const ctl = document.createElement('div');
     const area = document.createElement('div');
     box.append(ctl, area);
-    const FILTERS = [['all', '全部'], ['en', '考試風格題'], ['new', '沒做過'], ['wrong', '最近答錯'], ['flag', '不懂'], ['multi', '多選'], ['fig', '圖例']].concat(all.some((q) => q.rt) ? [['rt', '錯題重測']] : []);
+    const FILTERS = [['all', '全部'], ['en', '考試風格題'], ['new', '沒做過'], ['wrong', '最近答錯'], ['flag', '不懂'], ['multi', '多選'], ['fig', '圖例']].filter((f) => f[0] !== 'multi' || all.some((q) => q.type === 'multi')).concat(all.some((q) => q.rt) ? [['rt', '錯題重測']] : []);
     let f = 'all';
     const pickIds = () => {
       const d = D();
       return all.filter((q) => f === 'all' || (f === 'en' && q.ex) || (f === 'new' && !d.att[q.id]) || (f === 'wrong' && last(d, q.id) && !last(d, q.id)[2]) || (f === 'flag' && d.flag[q.id]) || (f === 'multi' && q.type === 'multi') || (f === 'fig' && q.fig) || (f === 'rt' && q.rt)).map((q) => q.id);
     };
+    const countOf = (v) => { const keep = f; f = v; const n = pickIds().length; f = keep; return n; };
+    let running = false;
     const paint = () => {
       const d = D();
       const done = all.filter((q) => d.att[q.id]).length;
+      const wrongN = all.filter((q) => last(d, q.id) && !last(d, q.id)[2]).length;
       const okN = all.filter((q) => last(d, q.id) && last(d, q.id)[2]).length;
       const fl = all.filter((q) => d.flag[q.id]).length;
       const multi = all.filter((q) => q.type === 'multi').length;
       ctl.innerHTML = `<div class="stats">
-          <div class="stat"><div class="v">${all.length}<small> 題</small></div><div class="l">本節題數（多選 ${multi}）</div></div>
+          <div class="stat"><div class="v">${all.length}<small> 題</small></div><div class="l">本節題數${multi ? `（多選 ${multi}）` : ''}</div></div>
           <div class="stat"><div class="v">${done}<small>／${all.length}</small></div><div class="l">做過的題</div></div>
           <div class="stat"><div class="v">${pct(okN, done)}<small>%</small></div><div class="l">最近一次的正確率</div></div>
+          <div class="stat"><div class="v bad">${wrongN}</div><div class="l">最近答錯</div></div>
           <div class="stat"><div class="v">${fl}</div><div class="l">標記「不懂」</div></div></div>
-        <div class="row"><div class="seg" role="group" aria-label="篩選題目">${FILTERS.map(([v, t]) => `<button type="button" data-v="${v}" aria-pressed="${v === f}">${t}</button>`).join('')}</div></div>
-        <div class="row" style="margin-top:.7rem"><button type="button" class="btn go">開始練習（${pickIds().length} 題）</button></div>`;
+        ${running ? '<p class="small muted" style="margin:.2rem 0 .6rem">練習中：上面的數字會隨作答即時更新。</p>' : `<div class="row"><div class="seg" role="group" aria-label="篩選題目">${FILTERS.map(([v, t]) => `<button type="button" data-v="${v}" aria-pressed="${v === f}">${t} <small>${countOf(v)}</small></button>`).join('')}</div></div>
+        <div class="row" style="margin-top:.7rem"><button type="button" class="btn go">開始練習（${pickIds().length} 題）</button></div>`}`;
+      if (running) return;
       $$('.seg button', ctl).forEach((b) => b.addEventListener('click', () => { f = b.dataset.v; paint(); }));
-      $('.go', ctl).addEventListener('click', () => { ctl.hidden = true; session(area, pickIds(), { onExit: () => { area.innerHTML = ''; ctl.hidden = false; paint(); box.scrollIntoView({ block: 'start', behavior: 'smooth' }); } }); });
+      $('.go', ctl).addEventListener('click', () => { running = true; paint(); session(area, pickIds(), { onExit: () => { area.innerHTML = ''; running = false; paint(); box.scrollIntoView({ block: 'start', behavior: 'smooth' }); } }); });
     };
     if (!all.length) { box.innerHTML = '<p class="muted">本節題目整理中。</p>'; return; }
     paint();
+    window.addEventListener('acp:data', paint);
   });
 
   /* ================= 首頁儀表板 ================= */
   const dash = $('#dash');
-  if (dash) {
+  const paintDash = () => {
     const d = D();
     const ids = Q.map((q) => q.id);
     const done = ids.filter((id) => d.att[id]);
@@ -222,6 +228,10 @@
       <div class="stat"><div class="v bad">${wrong}</div><div class="l">目前答錯的題</div></div>
       <div class="stat"><div class="v warn">${Object.keys(d.flag).length}</div><div class="l">標記「不懂」</div></div>
       <div class="stat"><div class="v">${ex.length ? pct(ex[ex.length - 1].score, ex[ex.length - 1].total) + '<small>%</small>' : '—'}</div><div class="l">最近一次全真模擬</div></div>`;
+  };
+  if (dash) {
+    paintDash(); window.addEventListener('acp:data', paintDash);
+    const d = D();
     const big = $('#big-count');
     const paintCount = () => {
       const at = D().examAt;
@@ -252,7 +262,8 @@
   /* ================= 模擬考頁 ================= */
   const app = $('#exam-app');
   if (!app) return;
-  let timer = 0;
+  let timer = 0, view = '';
+  window.addEventListener('acp:data', () => { if (view === 'home') home(); });
 
   function pickExam(n, src) {
     const out = [];
@@ -279,6 +290,7 @@
     save(d); run();
   }
   function practice(ids, title) {
+    view = 'practice';
     clearInterval(timer); document.body.classList.add('ex-run');
     app.innerHTML = `<div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(title)}</h2><button type="button" class="btn ghost sm back">回模擬考首頁</button></div><div class="sessbox"></div>`;
     $('.back', app).addEventListener('click', home);
@@ -288,6 +300,7 @@
 
   /* ---------- 首頁 ---------- */
   function home() {
+    view = 'home';
     clearInterval(timer); document.body.classList.remove('ex-run');
     const d = D();
     if (d.cur && !d.cur.t1) return run();
@@ -330,7 +343,7 @@
           <div class="card"><h3>不懂的題</h3><p class="small muted">你按過星號「不懂」的題。搞懂了再按一次取消。</p><button type="button" class="btn ghost" data-go="flag" ${flags.length ? '' : 'disabled'}>練 ${flags.length} 題</button></div>
           <div class="card"><h3>還沒做過的題</h3><p class="small muted">隨機抽 20 題你從沒碰過的題目，作答後馬上看解析。</p><button type="button" class="btn ghost" data-go="new" ${fresh.length ? '' : 'disabled'}>抽 ${Math.min(20, fresh.length)} 題</button></div>
           <div class="card"><h3>自選範圍</h3><label class="small muted" for="pick-sec">章節</label><select id="pick-sec" class="search" style="margin:.3rem 0 .5rem"><option value="*">全部章節</option>${Object.keys(DN).map((k) => `<option value="d${k}">${k} ${DN[k]}（整個 domain）</option>`).join('')}${secOpts}</select>
-            <label class="small muted" for="pick-type">題型</label><select id="pick-type" class="search" style="margin:.3rem 0 .6rem"><option value="*">全部題型</option><option value="en">只要考試風格題</option><option value="multi">只要多選</option><option value="fig">只要圖例題</option></select><button type="button" class="btn ghost" data-go="custom">開始練習</button></div>
+            <label class="small muted" for="pick-type">題型</label><select id="pick-type" class="search" style="margin:.3rem 0 .6rem"><option value="*">全部題型</option><option value="en">只要考試風格題</option>${Q.some((q) => q.type === 'multi') ? '<option value="multi">只要多選</option>' : ''}<option value="fig">只要圖例題</option></select><button type="button" class="btn ghost" data-go="custom">開始練習</button></div>
         </div></section>
       <section class="sec"><h2>各 domain 掌握度</h2><div class="meter">${domRows}</div></section>
       <section class="sec"><h2>歷次模擬考</h2>${spark}${hist}</section>
@@ -369,6 +382,7 @@
 
   /* ---------- 考試進行中 ---------- */
   function run() {
+    view = 'run';
     clearInterval(timer); document.body.classList.add('ex-run'); scrollTo({ top: 0 });
     const d = D(); const c = d.cur; if (!c) return home();
     const total = c.ids.length;
@@ -420,6 +434,7 @@
     go(c.i || 0);
   }
   function finish(auto) {
+    view = 'finish';
     clearInterval(timer); document.onkeydown = null;
     const d = D(); const c = d.cur; if (!c) return home();
     let score = 0; const now = Date.now();
@@ -431,6 +446,7 @@
 
   /* ---------- 檢討 ---------- */
   function review(id, fresh) {
+    view = 'review';
     clearInterval(timer); document.body.classList.remove('ex-run');
     const d = D(); const ex = d.exams.find((e) => e.id === id); if (!ex) return home();
     const qs = ex.ids.map((k) => BY.get(k)).filter(Boolean);
@@ -442,7 +458,7 @@
     app.innerHTML = `<div class="card">
         <div class="eyebrow">${ex.mode === 'quick' ? '20 題小考' : '全真模擬考'}・${fmtT(ex.t1)}${ex.auto ? '・時間到自動交卷' : ''}</div>
         <div class="row" style="align-items:baseline;margin:.4rem 0"><span style="font-size:2.6rem;font-weight:800;letter-spacing:-.02em;color:${pass ? 'var(--green)' : 'var(--rose)'}">${ex.score}／${ex.total}</span><span class="chip ${pass ? 'green' : 'rose'}">${p}%・${pass ? '達及格線' : '未達及格線'}</span></div>
-        <p class="small muted">正式考試 ${EXAM_N} 題答對 ${CFG.pass_n} 題及格（約 ${Math.round(PASS * 100)}%）。多選題要全部選對才算分。用時 ${Math.round((ex.t1 - ex.t0) / 60000)} 分鐘。</p>
+        <p class="small muted">正式考試 ${EXAM_N} 題答對 ${CFG.pass_n} 題及格（約 ${Math.round(PASS * 100)}%）。${Q.some((q) => q.type === 'multi') ? '多選題要全部選對才算分。' : ''}用時 ${Math.round((ex.t1 - ex.t0) / 60000)} 分鐘。</p>
         <div class="meter">${byDom}</div>
         ${weakSecs.length ? `<div class="call weak"><div><div class="t">這次最弱的小節</div>${weakSecs.map(([s, [o, t]]) => `<a class="chip rose" href="${s}.html">${s}　${o}／${t}</a>`).join(' ')}<p class="small" style="margin:.4rem 0 0">點進去讀「3 分鐘速覽」和「易錯觀念」，再回來做錯題重練。</p></div></div>` : ''}
         <div class="row"><button type="button" class="btn" id="rv-redo" ${qs.some((q) => !okOf(q)) ? '' : 'disabled'}>錯的題立刻重練</button><button type="button" class="btn ghost" id="rv-home">回模擬考首頁</button></div></div>
